@@ -1,0 +1,5 @@
+use linked list for canvas layers
+clean up event loop
+reimplement color picker
+reimplement undo
+fix cursor not changing back to default
