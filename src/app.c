@@ -38,15 +38,7 @@ void AppInit(App *app) {
         return;
     }
 
-    // create ui texture
     app->ui_rect = (SDL_FRect){0, 0, 500, app->window_rect.h};
-
-    app->ui_texture = SDL_CreateTexture(app->renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, display->w, display->h);
-    if (!app->ui_texture) {
-        SDL_LogCritical(SDL_LOG_CATEGORY_ERROR, "Error creating ui texture: %s\n", SDL_GetError());
-        return;
-    }
-    SDL_SetTextureBlendMode(app->ui_texture, SDL_BLENDMODE_BLEND);
 
     app->color_picker = (SDL_FRect){20, 20, 360, 360};
     app->color_picker_texture = SDL_CreateTexture(app->renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, app->color_picker.w, app->color_picker.h);
@@ -101,7 +93,7 @@ void AppUpdate(App *app) {
                 app->mouse_pos.y = app->event.button.y;
                 switch (app->event.button.button) {
                     case SDL_BUTTON_LEFT:
-                        if ((!app->draw_ui || app->draw_ui && !SDL_PointInRectFloat(&app->mouse_pos, &app->ui_rect)) && app->input_state == INPUT_NONE && SDL_PointInRectFloat(&app->mouse_pos, &app->canvas.rect)) {
+                        if ((!app->draw_ui || (app->draw_ui && !SDL_PointInRectFloat(&app->mouse_pos, &app->ui_rect))) && app->input_state == INPUT_NONE && SDL_PointInRectFloat(&app->mouse_pos, &app->canvas.rect)) {
                             app->input_state = INPUT_DRAWING;
                             DrawOnCanvas(&app->canvas, &app->brush, app->event.button.x, app->event.button.y, app->event.button.x, app->event.button.y);
                         } else if (app->draw_ui) {
@@ -149,24 +141,16 @@ void AppUpdate(App *app) {
                         }
                         break;
                     case SDL_BUTTON_RIGHT:
-                        if (!app->draw_ui) {
+                        if (!app->draw_ui && app->input_state == INPUT_NONE) {
                             app->input_state = INPUT_ERASING;
                             EraseFromCanvas(&app->canvas, &app->brush, app->event.button.x, app->event.button.y, app->event.button.x, app->event.button.y);
                         }
                         break;
-                    case SDL_BUTTON_MIDDLE: {
+                    case SDL_BUTTON_MIDDLE:
                         if (SDL_PointInRectFloat(&app->mouse_pos, &app->canvas.rect)) {
                             CanvasUseFillTool(&app->canvas, app->mouse_pos.x, app->mouse_pos.y);
-                            // SDL_Rect rect = {(app->mouse_pos.x - app->canvas.rect.x) / app->canvas.scale, (app->mouse_pos.y - app->canvas.rect.y) / app->canvas.scale, 1, 1};
-                            // SDL_Surface *s = SDL_RenderReadPixels(app->renderer, &rect);
-                            // Uint32 *pixel = s->pixels;
-                            // SetColorRGB(&app->canvas.draw_color, (Uint8)*pixel & 0xFF, (Uint8)(*pixel >> 8) & 0xFF, (Uint8)(*pixel >> 16) & 0xFF);
-                            // SDL_DestroySurface(s);
-
-                            // UpdateColorPicker(app);
                         }
                         break;
-                    }
                     default:
                         break;
                 }
@@ -244,8 +228,8 @@ void AppUpdate(App *app) {
                 }
                 break;
             case SDL_EVENT_KEY_UP:
-                if (app->input_state == INPUT_SCALE_CANVAS && app->event.key.scancode == SDL_SCANCODE_LCTRL ||
-                    app->input_state == INPUT_MOVE_CANVAS && app->event.key.scancode == SDL_SCANCODE_SPACE) {
+                if ((app->input_state == INPUT_SCALE_CANVAS && app->event.key.scancode == SDL_SCANCODE_LCTRL) ||
+                    (app->input_state == INPUT_MOVE_CANVAS && app->event.key.scancode == SDL_SCANCODE_SPACE)) {
                     app->input_state = INPUT_NONE;
                     app->draw_brush_preview = true;
                     SetAppCursor(app, SDL_GetDefaultCursor());
@@ -269,16 +253,6 @@ void AppUpdate(App *app) {
         }
     }
 
-    // draw ui to texture
-    // SDL_SetRenderTarget(app->renderer, app->ui_texture);
-    // SDL_SetRenderDrawColor(app->renderer, 0, 0, 0, 0);
-    // SDL_RenderClear(app->renderer);
-    // SDL_SetRenderDrawColor(app->renderer, app->canvas.draw_color.r, app->canvas.draw_color.g, app->canvas.draw_color.b, 255);
-    // DrawCircle(app->renderer, app->mouse_pos.x, app->mouse_pos.y, app->canvas.scale * app->brush.size / 2.0);
-    // if (app->draw_ui) {
-    //     DrawUI(app);
-    // }
-
     // render everything
     SDL_SetRenderTarget(app->renderer, NULL);
     SDL_SetRenderDrawColor(app->renderer, app->window_bg_color.r, app->window_bg_color.g, app->window_bg_color.b, app->window_bg_color.a);
@@ -288,7 +262,6 @@ void AppUpdate(App *app) {
     SDL_SetRenderDrawColor(app->renderer, app->canvas.draw_color.r, app->canvas.draw_color.g, app->canvas.draw_color.b, 255);
     DrawCircle(app->renderer, app->mouse_pos.x, app->mouse_pos.y, app->canvas.scale * app->brush.size / 2.0);
 
-    // SDL_RenderTexture(app->renderer, app->ui_texture, &app->window_rect, &app->window_rect);
     if (app->draw_ui) {
         DrawUI(app);
     }
@@ -303,9 +276,6 @@ void AppQuit(App *app) {
         SDL_DestroyCursor(app->cursor);
     }
 
-    if (app->ui_texture) {
-        SDL_DestroyTexture(app->ui_texture);
-    }
     if (app->color_picker_texture) {
         SDL_DestroyTexture(app->color_picker_texture);
     }
@@ -378,8 +348,6 @@ void DrawUI(App *app) {
     SDL_RenderFillRect(app->renderer, &rect);
 
     // draw palette
-    // SDL_SetRenderDrawColor(app->renderer, 40, 40, 40, 255);
-    // SDL_RenderFillRect(app->renderer, &app->color_palette);
     for (int i = 0; i < app->pallette_len; i++) {
         SDL_SetRenderDrawColor(app->renderer, app->palette_swatches[i].color.r, app->palette_swatches[i].color.g, app->palette_swatches[i].color.b, app->palette_swatches[i].color.a);
         SDL_RenderFillRect(app->renderer, &app->palette_swatches[i].rect);

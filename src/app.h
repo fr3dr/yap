@@ -36,8 +36,6 @@ typedef struct App {
 
     SDL_Cursor *cursor;
 
-    SDL_Texture *ui_texture;
-
     SDL_Color window_bg_color;
 
     Canvas canvas;
