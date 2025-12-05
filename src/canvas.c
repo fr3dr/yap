@@ -276,6 +276,7 @@ void CanvasWriteImage(Canvas *canvas, const char *filename) {
         SDL_BlitSurface(canvas->layers[i].surface, NULL, surface, NULL);
     }
     stbi_write_png(filename, surface->w, surface->h, 4, surface->pixels, surface->pitch);
+    SDL_DestroySurface(surface);
     SDL_Log("saved!");
 }
 
